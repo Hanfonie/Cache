@@ -17,7 +17,7 @@ import org.simpleyaml.configuration.serialization.ConfigurationSerializable;
 public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extends ICacheDescriptor<T>, V extends Map<?, ?>> {
 
 	private static final String DEFAULT_DATA_FILE = "data.yml";
-	
+
 	protected Cache cache;
 
 	protected final V cacheMap;
@@ -46,6 +46,20 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 	}
 
 	public abstract T getOrCreate(U descriptor);
+
+	@SuppressWarnings("unchecked")
+	protected T getCacheOnly(U u, Object... path) {
+		int pos = 0;
+
+		Map<Object, Object> map = (Map<Object, Object>) cacheMap;
+
+		for (; pos + 1 != path.length; pos++)
+			map = (Map<Object, Object>) map.computeIfAbsent(path[pos], k -> new HashMap<>());
+
+		if (map.containsKey(pos))
+			return (T) map.get(path[pos]);
+		return null;
+	}
 
 	@SuppressWarnings("unchecked")
 	protected T getOrCreate0(U u, Object... path) {
@@ -136,9 +150,9 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 	protected File getDataFile(U u) {
 		return new File(getDirectory(u), DEFAULT_DATA_FILE);
 	}
-	
+
 	protected abstract File getDirectory(U desc);
-	
+
 	protected abstract File getDirectory(T t);
 
 	protected void save(T t) {
