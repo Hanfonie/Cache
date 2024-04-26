@@ -70,8 +70,11 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 		for (; pos + 1 != path.length; pos++)
 			map = (Map<Object, Object>) map.computeIfAbsent(path[pos], k -> new HashMap<>());
 
-		if (map.containsKey(pos))
-			return (T) map.get(path[pos]);
+		if (map.containsKey(pos)) {
+			T t = (T) map.get(path[pos]);
+			t.updateLastAccess();
+			return t;
+		}
 
 		File saveDir = getDirectory(u);
 		if (!saveDir.exists())
