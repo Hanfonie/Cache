@@ -48,7 +48,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 	public abstract T getOrCreate(U descriptor);
 
 	@SuppressWarnings("unchecked")
-	protected T getCacheOnly(U u, Object... path) {
+	protected T getCacheOnly(Object... path) {
 		int pos = 0;
 
 		Map<Object, Object> map = (Map<Object, Object>) cacheMap;
@@ -59,6 +59,17 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 		if (map.containsKey(pos))
 			return (T) map.get(path[pos]);
 		return null;
+	}
+	
+	@SuppressWarnings("unchecked")
+	protected void put(T t, Object...path) {
+		int pos = 0;
+
+		Map<Object, Object> map = (Map<Object, Object>) cacheMap;
+
+		for (; pos + 1 != path.length; pos++)
+			map = (Map<Object, Object>) map.computeIfAbsent(path[pos], k -> new HashMap<>());
+		map.put(path[pos], t);
 	}
 
 	@SuppressWarnings("unchecked")
