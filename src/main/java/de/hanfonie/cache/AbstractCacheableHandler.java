@@ -139,15 +139,14 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 	private void checkMap(Map<?, ?> map) {
 		Iterator<?> iterator = map.entrySet().iterator();
 		while (iterator.hasNext()) {
-			Object o = iterator.next();
-
-			if (o instanceof Map) {
+			Entry<?, ?> o = (Entry<?, ?>) iterator.next();
+			if (o.getValue() instanceof Map) {
 				Map<?, ?> val = (Map<?, ?>) o;
 				checkMap(val);
 				if (val.isEmpty())
 					iterator.remove();
 			} else {
-				T t = (T) o;
+				T t = (T) o.getValue();
 				if (t.getLastAccess() + TimeUnit.SECONDS.toMillis(timeoutSeconds) < now) {
 					save(t);
 					iterator.remove();

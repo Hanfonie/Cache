@@ -45,6 +45,7 @@ public class Cache implements Runnable {
 				return null;
 			}
 		} finally {
+			lockLock.unlock();
 		}
 		T t;
 		try {
@@ -55,6 +56,34 @@ public class Cache implements Runnable {
 		}
 		return t;
 	}
+	
+	@SuppressWarnings("unchecked")
+	public <T extends ICacheable<T>, U extends ICacheDescriptor<T>, V extends Map<?, ?>> T getOrCreate(Class<T> clazz, U descriptor) {
+		ReentrantLock handlerLock = null;
+		try {
+			lockLock.lock();
+			if (!running) {
+				logger.severe("cache not running");
+				return null;
+			}
+			handlerLock = lockMap.get(clazz);
+			if (handlerLock == null) {
+				logger.severe("no handler registered for " + clazz.getCanonicalName());
+				return null;
+			}
+		} finally {
+			lockLock.unlock();
+		}
+		T t;
+		try {
+			handlerLock.lock();
+			t = ((AbstractCacheableHandler<T, U, V>) handlerMap.get(clazz)).getOrCreate(descriptor);
+		} finally {
+			handlerLock.unlock();
+		}
+		return t;
+	}
+	
 
 	@Override
 	public void run() {
@@ -74,6 +103,7 @@ public class Cache implements Runnable {
 						handler.checkAll();
 					} catch (Throwable th) {
 						logger.log(Level.SEVERE, "failed checking cache lifetime for " + handler.getType().getCanonicalName(), th);
+						th.printStackTrace();
 					}
 			} finally {
 				lockLock.unlock();

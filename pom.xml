@@ -23,6 +23,7 @@
 			<groupId>com.github.Carleslc.Simple-YAML</groupId>
 			<artifactId>Simple-Yaml</artifactId>
 			<version>1.8.4</version>
+			<scope>provided</scope>
 		</dependency>
 	</dependencies>
 	
