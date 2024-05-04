@@ -81,7 +81,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 		for (; pos + 1 != path.length; pos++)
 			map = (Map<Object, Object>) map.computeIfAbsent(path[pos], k -> new HashMap<>());
 
-		if (map.containsKey(pos)) {
+		if (map.containsKey(path[pos])) {
 			T t = (T) map.get(path[pos]);
 			t.updateLastAccess();
 			return t;
