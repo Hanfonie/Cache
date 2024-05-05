@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -16,17 +17,17 @@ import org.simpleyaml.configuration.serialization.ConfigurationSerializable;
 
 public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extends ICacheDescriptor<T>, V extends Map<?, ?>> {
 
-	private static final String DEFAULT_DATA_FILE = "data.yml";
-
 	protected Cache cache;
 
 	protected final V cacheMap;
 	protected final long timeoutSeconds;
 	private long now;
 	private final Method deserialize;
+	protected final File dir;
 
-	public AbstractCacheableHandler(V v, long timeoutSeconds) {
+	public AbstractCacheableHandler(File dir, V v, long timeoutSeconds) {
 		this.cacheMap = v;
+		this.dir = dir;
 		this.timeoutSeconds = timeoutSeconds;
 		try {
 			deserialize = getType().getDeclaredMethod("deserialize", Map.class);
@@ -39,30 +40,22 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 		return cache.getLockFor(this);
 	}
 
+	protected abstract Object[] toPath(U u);
+
+	protected abstract Object[] toPath(T t);
+
 	public T get(U descriptor) {
 		if (!exists(descriptor))
 			return null;
 		return getOrCreate(descriptor);
 	}
 
-	public abstract T getOrCreate(U descriptor);
-
-	@SuppressWarnings("unchecked")
-	protected T getCacheOnly(Object... path) {
-		int pos = 0;
-
-		Map<Object, Object> map = (Map<Object, Object>) cacheMap;
-
-		for (; pos + 1 != path.length; pos++)
-			map = (Map<Object, Object>) map.computeIfAbsent(path[pos], k -> new HashMap<>());
-
-		if (map.containsKey(pos))
-			return (T) map.get(path[pos]);
-		return null;
+	public T getOrCreate(U descriptor) {
+		return getOrCreate0(descriptor, toPath(descriptor));
 	}
-	
+
 	@SuppressWarnings("unchecked")
-	protected void put(T t, Object...path) {
+	protected void put(T t, Object... path) {
 		int pos = 0;
 
 		Map<Object, Object> map = (Map<Object, Object>) cacheMap;
@@ -70,6 +63,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 		for (; pos + 1 != path.length; pos++)
 			map = (Map<Object, Object>) map.computeIfAbsent(path[pos], k -> new HashMap<>());
 		map.put(path[pos], t);
+		System.out.println("set " + Arrays.asList(path) + " to " + t.serialize());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -83,6 +77,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 
 		if (map.containsKey(path[pos])) {
 			T t = (T) map.get(path[pos]);
+			System.out.println("cached already " + u.serialize() + ": " + t);
 			t.updateLastAccess();
 			return t;
 		}
@@ -102,14 +97,16 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 		T t = null;
 		try {
 			t = (T) deserialize.invoke(null, dataFile.getMapValues(false));
+			System.out.println("loaded " + dataFile.getConfigurationFile());
 		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
 			throw new IllegalStateException("could not deserialize " + getType() + ": " + dataFile, ex);
 		}
-		map.put(path[pos], t);
+		put(t, path);
 		return t;
 	}
 
 	public boolean exists(U descriptor) {
+		System.out.println("exists: " + descriptor.serialize() + ": " + getDataFile(descriptor).exists());
 		return getDataFile(descriptor).exists();
 	}
 
@@ -141,7 +138,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 		while (iterator.hasNext()) {
 			Entry<?, ?> o = (Entry<?, ?>) iterator.next();
 			if (o.getValue() instanceof Map) {
-				Map<?, ?> val = (Map<?, ?>) o;
+				Map<?, ?> val = (Map<?, ?>) o.getValue();
 				checkMap(val);
 				if (val.isEmpty())
 					iterator.remove();
@@ -157,16 +154,29 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 	}
 
 	protected File getDataFile(T t) {
-		return new File(getDirectory(t), DEFAULT_DATA_FILE);
+		Object[] path = toPath(t);
+		return new File(pathToDirectory(path), path[path.length - 1].toString() + ".yml");
 	}
 
 	protected File getDataFile(U u) {
-		return new File(getDirectory(u), DEFAULT_DATA_FILE);
+		Object[] path = toPath(u);
+		return new File(pathToDirectory(path), path[path.length - 1].toString() + ".yml");
 	}
 
-	protected abstract File getDirectory(U desc);
+	protected File getDirectory(U desc) {
+		return pathToDirectory(toPath(desc));
+	}
 
-	protected abstract File getDirectory(T t);
+	protected File pathToDirectory(Object... path) {
+		File f = dir;
+		for (int i = 0; i < path.length - 1; i++)
+			f = new File(f, path[i].toString());
+		return f;
+	}
+
+	protected File getDirectory(T t) {
+		return pathToDirectory(toPath(t));
+	}
 
 	protected void save(T t) {
 		save(getDataFile(t), t);
@@ -185,6 +195,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 			for (Entry<String, Object> e : ser.entrySet())
 				yaml.set(e.getKey(), e.getValue());
 			yaml.save();
+			System.out.println("saved " + f);
 		} catch (IOException e) {
 			throw new IllegalStateException(e);
 		}
