@@ -1,6 +1,5 @@
 package de.hanfonie.cache;
 
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -31,59 +30,58 @@ public class Cache implements Runnable {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T extends ICacheable<T>, U extends ICacheDescriptor<T>, V extends Map<?, ?>> T get(Class<T> clazz, U descriptor) {
-		ReentrantLock handlerLock = null;
-		try {
-			lockLock.lock();
-			if (!running) {
-				logger.severe("cache not running");
-				return null;
-			}
-			handlerLock = lockMap.get(clazz);
-			if (handlerLock == null) {
-				logger.severe("no handler registered for " + clazz.getCanonicalName());
-				return null;
-			}
-		} finally {
-			lockLock.unlock();
-		}
-		T t;
+	public <T extends ICacheable<T>, U extends ICacheDescriptor<T>> boolean exists(Class<T> clazz, U descriptor) {
+		ReentrantLock handlerLock = getHandlerLock(clazz);
+		boolean b;
 		try {
 			handlerLock.lock();
-			t = ((AbstractCacheableHandler<T, U, V>) handlerMap.get(clazz)).get(descriptor);
+			b = ((AbstractCacheableHandler<T, U, ?>) handlerMap.get(clazz)).exists(descriptor);
 		} finally {
 			handlerLock.unlock();
 		}
-		return t;
+		return b;
+	}
+
+	private ReentrantLock getHandlerLock(Class<?> clazz) {
+		ReentrantLock handlerLock = null;
+		try {
+			lockLock.lock();
+			if (!running)
+				throw new IllegalStateException("cache not runnning");
+			handlerLock = lockMap.get(clazz);
+			if (handlerLock == null)
+				throw new IllegalStateException("no handler registered for " + clazz.getCanonicalName());
+		} finally {
+			lockLock.unlock();
+		}
+		return handlerLock;
 	}
 	
 	@SuppressWarnings("unchecked")
-	public <T extends ICacheable<T>, U extends ICacheDescriptor<T>, V extends Map<?, ?>> T getOrCreate(Class<T> clazz, U descriptor) {
-		ReentrantLock handlerLock = null;
-		try {
-			lockLock.lock();
-			if (!running) {
-				logger.severe("cache not running");
-				return null;
-			}
-			handlerLock = lockMap.get(clazz);
-			if (handlerLock == null) {
-				logger.severe("no handler registered for " + clazz.getCanonicalName());
-				return null;
-			}
-		} finally {
-			lockLock.unlock();
-		}
+	public <T extends ICacheable<T>, U extends ICacheDescriptor<T>> T get(Class<T> clazz, U descriptor) {
+		ReentrantLock handlerLock = getHandlerLock(clazz);
 		T t;
 		try {
 			handlerLock.lock();
-			t = ((AbstractCacheableHandler<T, U, V>) handlerMap.get(clazz)).getOrCreate(descriptor);
+			t = ((AbstractCacheableHandler<T, U, ?>) handlerMap.get(clazz)).get(descriptor);
 		} finally {
 			handlerLock.unlock();
 		}
 		return t;
 	}
-	
+
+	@SuppressWarnings("unchecked")
+	public <T extends ICacheable<T>, U extends ICacheDescriptor<T>> T getOrCreate(Class<T> clazz, U descriptor) {
+		ReentrantLock handlerLock = getHandlerLock(clazz);
+		T t;
+		try {
+			handlerLock.lock();
+			t = ((AbstractCacheableHandler<T, U, ?>) handlerMap.get(clazz)).getOrCreate(descriptor);
+		} finally {
+			handlerLock.unlock();
+		}
+		return t;
+	}
 
 	@Override
 	public void run() {
