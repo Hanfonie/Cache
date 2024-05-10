@@ -41,6 +41,23 @@ public class Cache implements Runnable {
 		}
 		return b;
 	}
+	
+	@SuppressWarnings("unchecked")
+	public <T extends ICacheable<T>, U extends ICacheDescriptor<T>> void delete(Class<T> clazz, U descriptor) {
+		ReentrantLock handlerLock = getHandlerLock(clazz);
+		try {
+			handlerLock.lock();
+			AbstractCacheableHandler<T, U, ?> handler = ((AbstractCacheableHandler<T, U, ?>) handlerMap.get(clazz));
+			if(!handler.exists(descriptor))
+				return;
+			if(handler.get(descriptor) != null) {
+				handler.put(null, handler.toPath(descriptor));
+				handler.getDataFile(descriptor).delete();
+			}
+		} finally {
+			handlerLock.unlock();
+		}
+	}
 
 	private ReentrantLock getHandlerLock(Class<?> clazz) {
 		ReentrantLock handlerLock = null;
