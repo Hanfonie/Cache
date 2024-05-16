@@ -1,5 +1,7 @@
 package de.hanfonie.cache;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -19,6 +21,13 @@ public class Cache implements Runnable {
 	}
 
 	public void registerHandler(AbstractCacheableHandler<?, ?, ?> handler) {
+		try {
+			Method m = handler.getType().getDeclaredMethod("newInstance");
+			if(m.getParameterCount() != 0 || !Modifier.isStatic(m.getModifiers()))
+				throw new IllegalStateException(handler.getType().getCanonicalName() + " does not implement newInstance");
+		} catch (NoSuchMethodException | SecurityException e) {
+			throw new IllegalStateException(e);
+		}
 		handlerMap.put(handler.getType(), handler);
 		lockMap.put(handler.getType(), new ReentrantLock());
 		handler.cache = this;
