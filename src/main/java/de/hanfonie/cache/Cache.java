@@ -41,16 +41,31 @@ public class Cache implements Runnable {
 		}
 		return b;
 	}
-	
+
+	@SuppressWarnings("unchecked")
+	public <T extends ICacheable<T>, U extends ICacheDescriptor<T>> void set(Class<T> clazz, T value, U descriptor) {
+		ReentrantLock handlerLock = getHandlerLock(clazz);
+		try {
+			handlerLock.lock();
+			AbstractCacheableHandler<T, U, ?> handler = ((AbstractCacheableHandler<T, U, ?>) handlerMap.get(clazz));
+			if (!handler.exists(descriptor) && value == null)
+				return;
+			else
+				handler.getOrCreate(descriptor);
+
+			handler.put(value, handler.toPath(descriptor));
+		} finally {
+			handlerLock.unlock();
+		}
+	}
+
 	@SuppressWarnings("unchecked")
 	public <T extends ICacheable<T>, U extends ICacheDescriptor<T>> void delete(Class<T> clazz, U descriptor) {
 		ReentrantLock handlerLock = getHandlerLock(clazz);
 		try {
 			handlerLock.lock();
 			AbstractCacheableHandler<T, U, ?> handler = ((AbstractCacheableHandler<T, U, ?>) handlerMap.get(clazz));
-			if(!handler.exists(descriptor))
-				return;
-			if(handler.get(descriptor) != null) {
+			if (handler.get(descriptor) != null) {
 				handler.put(null, handler.toPath(descriptor));
 				handler.getDataFile(descriptor).delete();
 			}
@@ -73,7 +88,7 @@ public class Cache implements Runnable {
 		}
 		return handlerLock;
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	public <T extends ICacheable<T>, U extends ICacheDescriptor<T>> T get(Class<T> clazz, U descriptor) {
 		ReentrantLock handlerLock = getHandlerLock(clazz);

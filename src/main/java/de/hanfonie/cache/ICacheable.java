@@ -16,4 +16,6 @@ public interface ICacheable<T extends ICacheable<T>> extends ConfigurationSerial
 	public default Map<String, Object> serialize() {
 		return YamlAnnotationProcessor.serialize(this);
 	}
+
+	public T newInstance();
 }
