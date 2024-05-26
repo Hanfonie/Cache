@@ -2,24 +2,18 @@ package de.hanfonie.cache;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.simpleyaml.configuration.file.YamlFile;
 import org.simpleyaml.configuration.serialization.ConfigurationSerializable;
-
-import de.ancash.misc.yaml.YamlSerializable;
 
 public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extends ICacheDescriptor<T>, V extends Map<?, ?>> {
 
@@ -224,37 +218,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 		}
 	}
 
-	public boolean isValid(File file) {
-		getLock().lock();
-		try {
-			YamlFile yaml = new YamlFile(file);
-			yaml.load();
-			for (String field : getDescriptorFields(getDescriptorType()))
-				if (!yaml.contains(field))
-					return false;
-			return true;
-		} catch (IOException e) {
-			return false;
-		} finally {
-			getLock().unlock();
-		}
-	}
-
-	private static Map<Class<? extends ICacheDescriptor<?>>, List<String>> descriptorFields = new ConcurrentHashMap<Class<? extends ICacheDescriptor<?>>, List<String>>();
-
-	private static List<String> getDescriptorFields(Class<? extends ICacheDescriptor<?>> clazz) {
-		if (descriptorFields.containsKey(clazz))
-			return descriptorFields.get(clazz);
-		List<String> fields = new ArrayList<String>();
-		for (Field f : clazz.getDeclaredFields()) {
-			if (!f.isAnnotationPresent(YamlSerializable.class))
-				continue;
-			fields.add(f.getAnnotation(YamlSerializable.class).key());
-		}
-		return descriptorFields.computeIfAbsent(clazz, e -> fields);
-	}
-
-	public abstract Class<U> getDescriptorType();
+	public abstract boolean isValid(File f);
 
 	public abstract Class<T> getType();
 }
