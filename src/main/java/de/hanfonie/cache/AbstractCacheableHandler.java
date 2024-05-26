@@ -66,8 +66,12 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 			map = (Map<Object, Object>) map.computeIfAbsent(path[pos], k -> new HashMap<>());
 		if (t != null)
 			map.put(path[pos], t);
-		else
+		else {
 			map.remove(path[pos]);
+			getDataFile(t).delete();
+			System.out.println("deleted " + Arrays.asList(path));
+			return;
+		}
 		System.out.println("set " + Arrays.asList(path) + " to " + (t != null ? t.serialize() : "null"));
 	}
 
