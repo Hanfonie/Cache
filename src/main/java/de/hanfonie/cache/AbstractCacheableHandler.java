@@ -4,9 +4,11 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
@@ -104,6 +106,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 
 	@SuppressWarnings("unchecked")
 	protected T loadFromFile(File file) {
+		long now = System.nanoTime();
 		YamlFile dataFile = new YamlFile(file);
 		try {
 			if (!dataFile.exists())
@@ -115,7 +118,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 		T t = null;
 		try {
 			t = (T) deserialize.invoke(null, dataFile.getMapValues(false));
-			System.out.println("loaded " + dataFile.getConfigurationFile());
+			System.out.println("loaded " + dataFile.getConfigurationFile() + " " + (System.nanoTime() - now) / 1000 + " micros");
 		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
 			throw new IllegalStateException("could not deserialize " + getType() + ": " + dataFile, ex);
 		}
@@ -166,7 +169,6 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 					iterator.remove();
 				}
 			}
-
 		}
 	}
 
@@ -216,6 +218,22 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 		} catch (IOException e) {
 			throw new IllegalStateException(e);
 		}
+	}
+
+	public List<T> getCopyOfAll() {
+		List<T> t = new ArrayList<>();
+		getCopyOfAll(dir, t);
+		return t;
+	}
+
+	private void getCopyOfAll(File f, List<T> list) {
+		if (f.isDirectory()) {
+			if (f.listFiles().length > 0)
+				for (File s : f.listFiles())
+					getCopyOfAll(s, list);
+		} else
+			list.add(loadFromFile(f));
+
 	}
 
 	public abstract boolean isValid(File f);
