@@ -57,16 +57,18 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 	}
 
 	@SuppressWarnings("unchecked")
-	protected void put(T t, Object... path) {
+	protected void put(T t, boolean save, Object... path) {
 		int pos = 0;
 
 		Map<Object, Object> map = (Map<Object, Object>) cacheMap;
 
 		for (; pos + 1 != path.length; pos++)
 			map = (Map<Object, Object>) map.computeIfAbsent(path[pos], k -> new HashMap<>());
-		if (t != null)
+		if (t != null) {
 			map.put(path[pos], t);
-		else {
+			if(save)
+				save(t);
+		} else {
 			map.remove(path[pos]);
 			getDataFile(t).delete();
 			System.out.println("deleted " + Arrays.asList(path));
@@ -104,7 +106,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 			throw new IllegalStateException(e);
 		}
 		T t = loadFromFile(dataFile.getConfigurationFile());
-		put(t, path);
+		put(t, false, path);
 		return t;
 	}
 
@@ -235,7 +237,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 			if (f.listFiles().length > 0)
 				for (File s : f.listFiles())
 					getCopyOfAll(s, list);
-		} else
+		} else if (isValid(f))
 			list.add(loadFromFile(f));
 
 	}

@@ -62,7 +62,7 @@ public class Cache implements Runnable {
 			else
 				handler.getOrCreate(descriptor);
 
-			handler.put(value, handler.toPath(descriptor));
+			handler.put(value, true, handler.toPath(descriptor));
 		} finally {
 			handlerLock.unlock();
 		}
@@ -75,7 +75,7 @@ public class Cache implements Runnable {
 			handlerLock.lock();
 			AbstractCacheableHandler<T, U, ?> handler = ((AbstractCacheableHandler<T, U, ?>) handlerMap.get(clazz));
 			if (handler.get(descriptor) != null) {
-				handler.put(null, handler.toPath(descriptor));
+				handler.put(null, true, handler.toPath(descriptor));
 				handler.getDataFile(descriptor).delete();
 			}
 		} finally {
