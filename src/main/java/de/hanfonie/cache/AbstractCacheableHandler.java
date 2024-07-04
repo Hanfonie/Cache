@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -70,17 +69,21 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 				save(t);
 		} else {
 			map.remove(path[pos]);
-			getDataFile(t).delete();
-			System.out.println("deleted " + Arrays.asList(path));
+			getDataFile(path).delete();
+//			System.out.println("deleted " + Arrays.asList(path));
+			onDelete(t, path);
 			return;
 		}
-		System.out.println("set " + Arrays.asList(path) + " to " + (t != null ? t.serialize() : "null"));
+//		System.out.println("set " + Arrays.asList(path) + " to " + (t != null ? t.serialize() : "null"));
 	}
 
+	protected void onDelete(T t, Object...path) {
+		
+	}
+	
 	@SuppressWarnings("unchecked")
 	protected T getOrCreate0(U u, Object... path) {
 		int pos = 0;
-
 		Map<Object, Object> map = (Map<Object, Object>) cacheMap;
 
 		for (; pos + 1 != path.length; pos++)
@@ -88,7 +91,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 
 		if (map.containsKey(path[pos])) {
 			T t = (T) map.get(path[pos]);
-			System.out.println("cached already " + u.serialize() + ": " + t);
+//			System.out.println("cached already " + u.serialize() + ": " + t);
 			t.updateLastAccess();
 			return t;
 		}
@@ -132,7 +135,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 	}
 
 	public boolean exists(U descriptor) {
-		System.out.println("exists: " + descriptor.serialize() + ": " + getDataFile(descriptor).exists());
+//		System.out.println("exists: " + descriptor.serialize() + ": " + getDataFile(descriptor).exists());
 		return getDataFile(descriptor).exists();
 	}
 
@@ -179,12 +182,14 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 	}
 
 	protected File getDataFile(T t) {
-		Object[] path = toPath(t);
-		return new File(pathToDirectory(path), path[path.length - 1].toString() + ".yml");
+		return getDataFile(toPath(t));
 	}
 
 	protected File getDataFile(U u) {
-		Object[] path = toPath(u);
+		return getDataFile(toPath(u));
+	}
+	
+	protected File getDataFile(Object[] path) {
 		return new File(pathToDirectory(path), path[path.length - 1].toString() + ".yml");
 	}
 
@@ -220,7 +225,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 			for (Entry<String, Object> e : ser.entrySet())
 				yaml.set(e.getKey(), e.getValue());
 			yaml.save();
-			System.out.println("saved " + f);
+//			System.out.println("saved " + f);
 		} catch (IOException e) {
 			throw new IllegalStateException(e);
 		}

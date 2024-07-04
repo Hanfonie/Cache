@@ -2,6 +2,7 @@ package de.hanfonie.cache;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -23,7 +24,7 @@ public class Cache implements Runnable {
 	public void registerHandler(AbstractCacheableHandler<?, ?, ?> handler) {
 		try {
 			Method m = handler.getType().getDeclaredMethod("newInstance");
-			if(m.getParameterCount() != 0 || !Modifier.isStatic(m.getModifiers()))
+			if (m.getParameterCount() != 0 || !Modifier.isStatic(m.getModifiers()))
 				throw new IllegalStateException(handler.getType().getCanonicalName() + " does not implement newInstance");
 		} catch (NoSuchMethodException | SecurityException e) {
 			throw new IllegalStateException(e);
@@ -31,6 +32,19 @@ public class Cache implements Runnable {
 		handlerMap.put(handler.getType(), handler);
 		lockMap.put(handler.getType(), new ReentrantLock());
 		handler.cache = this;
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T extends ICacheable<T>, U extends ICacheDescriptor<T>> List<T> getCopyOfAll(Class<T> clazz) {
+		ReentrantLock handlerLock = getHandlerLock(clazz);
+		List<T> b;
+		try {
+			handlerLock.lock();
+			b = ((AbstractCacheableHandler<T, U, ?>) handlerMap.get(clazz)).getCopyOfAll();
+		} finally {
+			handlerLock.unlock();
+		}
+		return b;
 	}
 
 	@SuppressWarnings("unlikely-arg-type")
@@ -52,17 +66,14 @@ public class Cache implements Runnable {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T extends ICacheable<T>, U extends ICacheDescriptor<T>> void set(Class<T> clazz, T value, U descriptor) {
+	public <T extends ICacheable<T>, U extends ICacheDescriptor<T>> void set(Class<T> clazz, T value) {
+		if (value == null)
+			return;
 		ReentrantLock handlerLock = getHandlerLock(clazz);
 		try {
 			handlerLock.lock();
 			AbstractCacheableHandler<T, U, ?> handler = ((AbstractCacheableHandler<T, U, ?>) handlerMap.get(clazz));
-			if (!handler.exists(descriptor) && value == null)
-				return;
-			else
-				handler.getOrCreate(descriptor);
-
-			handler.put(value, true, handler.toPath(descriptor));
+			handler.put(value, true, handler.toPath(value));
 		} finally {
 			handlerLock.unlock();
 		}
@@ -74,10 +85,20 @@ public class Cache implements Runnable {
 		try {
 			handlerLock.lock();
 			AbstractCacheableHandler<T, U, ?> handler = ((AbstractCacheableHandler<T, U, ?>) handlerMap.get(clazz));
-			if (handler.get(descriptor) != null) {
+			if (handler.exists(descriptor))
 				handler.put(null, true, handler.toPath(descriptor));
-				handler.getDataFile(descriptor).delete();
-			}
+		} finally {
+			handlerLock.unlock();
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T extends ICacheable<T>, U extends ICacheDescriptor<T>> void delete(Class<T> clazz, T descriptor) {
+		ReentrantLock handlerLock = getHandlerLock(clazz);
+		try {
+			handlerLock.lock();
+			AbstractCacheableHandler<T, U, ?> handler = ((AbstractCacheableHandler<T, U, ?>) handlerMap.get(clazz));
+			handler.put(null, true, handler.toPath(descriptor));
 		} finally {
 			handlerLock.unlock();
 		}
