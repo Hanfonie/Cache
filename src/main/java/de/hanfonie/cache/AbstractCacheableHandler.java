@@ -115,7 +115,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 
 	@SuppressWarnings("unchecked")
 	protected T loadFromFile(File file) {
-		long now = System.nanoTime();
+//		long now = System.nanoTime();
 		YamlFile dataFile = new YamlFile(file);
 		try {
 			if (!dataFile.exists())
@@ -127,7 +127,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 		T t = null;
 		try {
 			t = (T) deserialize.invoke(null, dataFile.getMapValues(false));
-			System.out.println("loaded " + dataFile.getConfigurationFile() + " " + (System.nanoTime() - now) / 1000 + " micros");
+//			System.out.println("loaded " + dataFile.getConfigurationFile() + " " + (System.nanoTime() - now) / 1000 + " micros");
 		} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
 			throw new IllegalStateException("could not deserialize " + getType() + ": " + dataFile, ex);
 		}
@@ -225,7 +225,7 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 			for (Entry<String, Object> e : ser.entrySet())
 				yaml.set(e.getKey(), e.getValue());
 			yaml.save();
-//			System.out.println("saved " + f);
+//			System.out.println("saved " + f.getPath());
 		} catch (IOException e) {
 			throw new IllegalStateException(e);
 		}

@@ -158,13 +158,18 @@ public class Cache implements Runnable {
 
 			try {
 				lockLock.lock();
-				for (AbstractCacheableHandler<?, ?, ?> handler : handlerMap.values())
+				for (AbstractCacheableHandler<?, ?, ?> handler : handlerMap.values()) {
+					ReentrantLock lock =  getHandlerLock(handler.getType());
 					try {
+						lock.lock();
 						handler.checkAll();
 					} catch (Throwable th) {
 						logger.log(Level.SEVERE, "failed checking cache lifetime for " + handler.getType().getCanonicalName(), th);
 						th.printStackTrace();
+					}  finally {
+						lock.unlock();
 					}
+				}
 			} finally {
 				lockLock.unlock();
 			}
@@ -176,8 +181,14 @@ public class Cache implements Runnable {
 		try {
 			lockLock.lock();
 			for (AbstractCacheableHandler<?, ?, ?> handler : handlerMap.values()) {
-				handler.saveAll();
-				logger.info("saved all cached " + handler.getType().getCanonicalName());
+				ReentrantLock lock =  getHandlerLock(handler.getType());
+				try {
+					lock.lock();
+					handler.saveAll();
+					logger.info("saved all cached " + handler.getType().getCanonicalName());
+				} finally {
+					lock.unlock();
+				}
 			}
 		} finally {
 			lockLock.unlock();
