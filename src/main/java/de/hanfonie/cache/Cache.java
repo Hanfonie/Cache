@@ -181,13 +181,10 @@ public class Cache implements Runnable {
 		try {
 			lockLock.lock();
 			for (AbstractCacheableHandler<?, ?, ?> handler : handlerMap.values()) {
-				ReentrantLock lock =  getHandlerLock(handler.getType());
 				try {
-					lock.lock();
 					handler.saveAll();
 					logger.info("saved all cached " + handler.getType().getCanonicalName());
 				} finally {
-					lock.unlock();
 				}
 			}
 		} finally {

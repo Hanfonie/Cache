@@ -148,11 +148,11 @@ public abstract class AbstractCacheableHandler<T extends ICacheable<T>, U extend
 	private void saveMap(Map<?, ?> map) {
 		Iterator<?> iterator = map.entrySet().iterator();
 		while (iterator.hasNext()) {
-			Object o = iterator.next();
-			if (o instanceof Map)
-				saveMap((Map<?, ?>) o);
+			Entry<?, ?> o = (Entry<?, ?>) iterator.next();
+			if (o.getValue() instanceof Map)
+				saveMap((Map<?, ?>) o.getValue());
 			else
-				save((T) o);
+				save((T) o.getValue());
 		}
 	}
 
