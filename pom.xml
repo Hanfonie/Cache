@@ -16,6 +16,11 @@
 			<id>jitpack.io</id>
 			<url>https://jitpack.io</url>
 		</repository>
+		<repository>
+			<id>raspi</id>
+			<url>http://denzo.algoholics.eu:25565/releases</url>
+		</repository>
+		
 	</repositories>
 
 	<dependencies>
